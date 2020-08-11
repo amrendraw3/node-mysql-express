@@ -1,4 +1,6 @@
 var mysql = require('mysql');
+const util = require( 'util' );
+
 module.exports = {
     "local": {
         host: 'localhost',
@@ -23,8 +25,15 @@ module.exports = {
 
     sqlConn: function() {
     	const nodeEnv = process.env.NODE_ENV || "local";
-    	var connection = mysql.createConnection(this[nodeEnv]);
-    	connection.connect();
-    	return connection;
+    	const connection = mysql.createConnection(this[nodeEnv]);
+          return {
+            query( sql, args ) {
+              return util.promisify( connection.query )
+                .call( connection, sql, args );
+            },
+            close() {
+              return util.promisify( connection.end ).call( connection );
+            }
+          };
     }
 }

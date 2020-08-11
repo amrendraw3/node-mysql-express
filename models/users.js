@@ -4,15 +4,12 @@ var commonHelper = require('../helpers/common');
 
 var user = {};
 
-user.getAll = result => {
-    dbConn.query(userQueries.getAll(), function(error, results, fields) {
-        if (error) throw error;
-        console.log('The users are: ', results);
-        result(null, results);
-    });
+user.getAll = async () => {
+  const results = await dbConn.query(userQueries.getAll());
+  return results;
 }
 
-user.findByMobileOrEmail = (email, mobile, countryCode, result) => {
+user.findByMobileOrEmail = async (email, mobile, countryCode) => {
 	let query;
 
 	if(!!email) {
@@ -21,19 +18,13 @@ user.findByMobileOrEmail = (email, mobile, countryCode, result) => {
 		query = userQueries.findByMobile(mobile, countryCode);
 	}
 
-	dbConn.query(query, function(error, results, fields) {
-    if (error) throw error;
-    console.log('The users are: ', results);
-    result(null, results);
-  });
+	const results = await dbConn.query(query);
+  return results;
 }
 
-user.create = (email, mobile, countryCode, result) => {
-	dbConn.query(userQueries.create(email, mobile, countryCode, commonHelper.getCurrentTime()), function(error, results, fields) {
-    if (error) throw error;
-    console.log('The users are: ', results);
-    result(null, results);
-  });
+user.create = async (email, mobile, countryCode) => {
+	const results = await dbConn.query(userQueries.create(email, mobile, countryCode, commonHelper.getCurrentTime()));
+  return results;
 }
 
 module.exports = user;
