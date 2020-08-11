@@ -3,8 +3,8 @@ module.exports = {
     "local": {
         host: 'localhost',
         user: 'root',
-        password: 'password',
-        database: 'node-mysql'
+        password: 'root',
+        database: 'superone_prod'
     },
 
     "staging": {
