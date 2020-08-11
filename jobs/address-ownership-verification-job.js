@@ -5,6 +5,7 @@ const User = require("../models/users");
 const Member = require("../models/member");
 const Request = require('request-promise');
 const KEYS = require("../config/keys")[process.env.NODE_ENV || "local"];
+const helper = require("../helpers/common");
 
 verifyPendingRequests = async () => {
 	console.log('started job: verifyAddressRequest verifyPendingRequests');
@@ -31,7 +32,7 @@ verifyPendingRequests = async () => {
 }
 
 expireRequestIfRequired = async (pendingRequest) => {
-	const timediff = await helper.timeDiffCalc(Number(pendingRequest.date));
+	const timediff = await helper.timeDiffCalc(Number(pendingRequest.requestTime));
 	console.log('Pending request time: ', pendingRequest, timediff);
 	if(timediff.minutes >= 60) {
 		await UserAccountOwnershipRequest.expireRequest(pendingRequest.id);
@@ -67,8 +68,8 @@ scanAddressTransactions = async (pendingRequests) => {
 			console.log(`scanAddressTransactions: ${pendingRequest.ethAddress}`, fltTxn);
 			if(!!fltTxn) {
 				console.log(`scanAddressTransactions: transaction found for ${pendingRequest.ethAddress}`);
-				const user = await User.findByMobileOrEmail(pendingRequest.email, pendingRequest.mobile, pendingRequest.countryCode);
-				console.log(user);
+				let user = await User.findByMobileOrEmail(pendingRequest.email, pendingRequest.mobile, pendingRequest.countryCode);
+				user = user[0];
 
 				if (!!user) {
 					await updateExistingUser(user, pendingRequest, fltTxn.hash);
@@ -87,35 +88,43 @@ scanAddressTransactions = async (pendingRequests) => {
 }
 
 updateExistingUser = async (user, pendingRequest, txnHash) => {
-	const member = await Member.findByEthAddress(pendingRequest.ethAddress);
+	let member = await Member.findByEthAddress(pendingRequest.ethAddress);
+	member = member[0];
 
 	if (!!member) {
 		await associateUser(member.id, user.id, pendingRequest.id, txnHash);
 	}
 }
 
-associateUser = (memberId, userId, pendingRequestId, txnHash) => {
-	Member.updateMemberForUser(memberId, userId).then(async (result) => {
+associateUser = async (memberId, userId, pendingRequestId, txnHash) => {
+	await Member.updateMemberForUser(memberId, userId).then(async (result) => {
 		await UserAccountOwnershipRequest.updateStatus(pendingRequestId, txnHash, 'approved', userId, memberId);
-		console.log('scanAddressTransactions: user successfully updated for pending request:', pendingRequest);
+		console.log('scanAddressTransactions: user successfully updated for pending request:', pendingRequestId);
 	});
 }
 
 createNewUser = async(pendingRequest, txnHash) => {
-	const member = await Member.findByEthAddress(pendingRequest.ethAddress);
+	let member = await Member.findByEthAddress(pendingRequest.ethAddress);
+	member = member[0];
+
 	if (!!member) {
 		User.create(pendingRequest.email, pendingRequest.mobile, pendingRequest.countryCode).then(async (result) => {
-			await associateUser(member.id, result.id, pendingRequest.id, txnHash);
+			console.log(result);
+			await associateUser(member.id, result.insertId, pendingRequest.id, txnHash);
 		});
 	}
 }
 
 updateLastBlock = async(lastTxn) => {
 	let lastBlock = await LastScanBlock.getLast();
+	console.log(lastBlock);
+	lastBlock = lastBlock[0];
 	if(!!lastBlock) {
 		await LastScanBlock.updateBlock(lastTxn.blockNumber);
+		console.log('updated block number: ', lastTxn.blockNumber);
 	} else {
-		new LastScanBlock.createBlock({block_number: lastTxn.blockNumber}).save();
+		const results = await LastScanBlock.createBlock(lastTxn.blockNumber);
+		console.log('created block number: ', lastTxn.blockNumber, results);
 	}
 }
 

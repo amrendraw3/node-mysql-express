@@ -13,7 +13,7 @@ userAccountOwnershipRequests.expireRequest = async (id) => {
   return results;
 }
 
-userAccountOwnershipRequests.updateStatus = (id, txnHash, status, userId, memberId, result) => {
+userAccountOwnershipRequests.updateStatus = async (id, txnHash, status, userId, memberId, result) => {
   const results = await dbConn.query(queries.updateStatus(id, txnHash, status, userId, memberId));
   return results;
 }
